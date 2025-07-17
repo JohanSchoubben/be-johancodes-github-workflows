@@ -1,0 +1,46 @@
+# versions.yaml
+name: Maven Dependency Update Report
+
+on:
+  workflow_call:
+    inputs:
+      java-version:
+        description: 'The Java version that is used in the workflow'
+        required: false
+        type: number
+        default: 21
+      maven-cache:
+        description: 'Enable Maven cache'
+        required: false
+        type: boolean
+        default: true
+    secrets:
+      GITHUB_TOKEN:
+        required: true
+
+jobs:
+  check-versions:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up JDK ${{ inputs.java-version }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ inputs.java-version }}
+          distribution: 'temurin'
+          cache: ${{ inputs.maven-cache && 'maven' || '' }}
+      - name: Run Maven versions plugin
+        run: |
+          mvn -f ./pom.xml versions:display-dependency-updates -B > dependency-updates.txt || echo "Failed to get dependency updates" > dependency-updates.txt
+          mvn -f ./pom.xml versions:display-property-updates -B > property-updates.txt || echo "Failed to get property updates" > property-updates.txt
+      - name: Upload dependency updates report as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-updates
+          path: dependency-updates.txt
+      - name: Upload property updates report as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: property-updates
+          path: property-updates.txt
